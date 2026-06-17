@@ -1,0 +1,127 @@
+name: conda-cleanup
+description: Remove old packages of a specific label from anaconda.org
+author: neutrons
+branding:
+  icon: trash-2
+  color: red
+
+inputs:
+  anaconda_token:
+    description: Anaconda.org API token
+    required: true
+  organization:
+    description: Anaconda.org organization or user name
+    required: true
+  package_name:
+    description: Name of the conda package to clean up
+    required: true
+  label:
+    description: |
+      Label to target for cleanup (e.g., dev, nightly, rc)
+    required: false
+    default: "dev"
+  keep:
+    description: Number of most recent package versions to keep
+    required: false
+    default: "5"
+  dry_run:
+    description: If true, only print what would be deleted without actually deleting
+    required: false
+    default: "false"
+
+outputs:
+  num_removed:
+    description: "Number of files that would be deleted"
+    value: ${{ steps.remove_pkg.outputs.num_removed }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Ensure anaconda command
+      id: get_command
+      shell: bash
+      run: |
+        if command -v anaconda &>/dev/null; then
+          echo "'anaconda' is available. Using it for command."
+          echo "CMD=anaconda" >> $GITHUB_OUTPUT
+        elif pixi run anaconda --version &>/dev/null; then
+          echo "anaconda is available via pixi. Using 'pixi run anaconda' for command."
+          echo "CMD=pixi run anaconda" >> $GITHUB_OUTPUT
+        else
+            echo "Checking for 'pixi' command..."
+            if command -v pixi &>/dev/null; then
+              echo "'pixi' command is available but 'anaconda' is not found. Installing anaconda-client..."
+              pixi global install anaconda-client
+              echo "Using 'pixi run anaconda' for command after installation."
+              echo "CMD=pixi run anaconda" >> $GITHUB_OUTPUT
+            else
+              echo "Neither 'anaconda' command nor 'pixi' is available."
+              echo "Please ensure that anaconda-client is installed and available in PATH or via pixi."
+              exit 1
+            fi
+        fi
+    - name: Remove old labeled packages
+      id: remove_pkg
+      shell: bash
+      env:
+        ANACONDA_API_TOKEN: ${{ inputs.anaconda_token }}
+        ORGANIZATION: ${{ inputs.organization }}
+        PACKAGE_NAME: ${{ inputs.package_name }}
+        LABEL: ${{ inputs.label }}
+        KEEP: ${{ inputs.keep }}
+        DRY_RUN: ${{ inputs.dry_run }}
+      run: |
+
+        set -euo pipefail
+
+        CMD="${{ steps.get_command.outputs.CMD }}"
+        if [ -z "${CMD}" ]; then
+          echo "No output detected from previous step."
+          exit 1
+        fi
+
+        ANACONDA_URL="https://api.anaconda.org/package/"
+        ANACONDA_URL="${ANACONDA_URL}${{ env.ORGANIZATION }}/${{ env.PACKAGE_NAME }}"
+        # 5.5 second timeout on curl
+        RAW_RESULT=$(curl --max-time 5.5 -s ${ANACONDA_URL})
+        if [ -z "${RAW_RESULT}" ]; then
+          echo "Curl returned empty result"
+          exit 1
+        fi
+        echo "${RAW_RESULT}"
+
+        FILES_TO_REMOVE=$(echo "${RAW_RESULT}" \
+          | jq -r '
+            [.files[] | select(.labels | index("${{ env.LABEL }}"))]
+            | group_by(.version)
+            | map({
+                version: .[0].version,
+                upload_time: (map(.upload_time) | max),
+                files: [.[].full_name]
+              })
+            | sort_by(.upload_time)
+            | reverse
+            | .[${{ env.KEEP }}:]
+            | .[].files[]
+          ')
+        echo "" # blank line
+        echo "dry-run=${{ env.DRY_RUN }}"
+        num_removed=0 # count how many files are removed
+
+        if [ -z "${FILES_TO_REMOVE}" ]; then
+          echo "No old files to remove from ${{ env.LABEL }}"
+          # write out number of packages that should have been deleted
+        else
+          echo "Removing old ${{ env.LABEL }} files"
+          for FILE in ${FILES_TO_REMOVE}; do
+            echo "Removing ${FILE}"
+            remove_cmd="${CMD} remove --force ${FILE}"
+            if [ "${DRY_RUN}" = "false" ]; then
+              ${remove_cmd}
+            fi
+            num_removed=$((num_removed+1))
+          done
+        fi
+        # summarize what happened and write output variables
+        echo "num_removed=${num_removed}"
+        echo "num_removed=${num_removed}" >> $GITHUB_OUTPUT

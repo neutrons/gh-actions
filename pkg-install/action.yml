@@ -1,0 +1,103 @@
+name: pkg-install
+description: Install and import a conda package with micromamba
+author: glass-ships
+branding:
+  icon: package
+  color: yellow
+
+inputs:
+  package-name:
+    description: Name of the package to install and verify
+    required: true
+  local-channel:
+    description: |
+      Local conda channel (path to directory containing .conda file)
+      For example, if the .conda artifact is downloaded to `/tmp/local-channel/linux-64`,
+      this should be set to `/tmp/local-channel`
+    required: false
+  python-version:
+    description: Python version to use when setting up micromamba
+    required: false
+    default: ""
+  extra-channels:
+    description: |
+      Additional channels to use when installing the package
+      Note, conda-forge is included by default
+      Example:
+        channels: mantid neutrons
+    required: false
+  post-cleanup:
+    description: How to cleanup the micromamba environment. Exposing from setup-micromamba
+    required: false
+    default: "shell-init"
+
+outputs:
+  conda_env:
+    description: Name of the created conda environment
+    value: ${{ steps.install.outputs.conda_env }}
+  conda_install_dir:
+    description: Filesystem path to the created conda environment
+    value: ${{ steps.install.outputs.conda_install_dir }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup micromamba
+      uses: mamba-org/setup-micromamba@v3
+      with:
+        environment-name: indexer
+        init-shell: bash
+        post-cleanup: ${{ inputs.post-cleanup }}
+        create-args: >-
+          -c conda-forge conda-build conda-index
+    - name: Index local conda channel
+      if: ${{ inputs.local-channel }}
+      shell: bash -el {0}
+      env:
+        LOCAL_CHANNEL: ${{ inputs.local-channel }}
+      run: |
+        echo "Index the local conda channel"
+        micromamba run -n indexer python -m conda_index ${LOCAL_CHANNEL}
+
+    - name: Install the package
+      id: install
+      shell: bash -el {0}
+      env:
+        CONDA_ENV_NAME: test
+        LOCAL_CHANNEL: ${{ inputs.local-channel }}
+        EXTRA_CHANNELS: ${{ inputs.extra-channels }}
+        PY_VERSION: ${{ inputs.python-version }}
+        PKG_NAME: ${{ inputs.package-name }}
+      run: |
+        echo "Install the conda package"
+        # set up channels
+        channels="conda-forge"
+        if [ -n "${LOCAL_CHANNEL}" ]; then
+            channels="${LOCAL_CHANNEL} $channels"
+        fi
+
+        if [ -n "${EXTRA_CHANNELS}" ]; then
+            channels+=" ${EXTRA_CHANNELS}"
+        fi
+        channels="-c ${channels// / -c }"
+
+        # set up python version
+        if [ -n "${PY_VERSION}" ]; then
+          PYTHON_VERSION="python=${PY_VERSION}"
+        fi
+
+        # create environment
+        micromamba create -y -n ${CONDA_ENV_NAME} ${channels} ${PYTHON_VERSION} ${PKG_NAME}
+
+        CONDA_INSTALL_DIR=$(micromamba env list | awk -v env="${CONDA_ENV_NAME}" '$1 == env { print $NF }')
+        if [ -z "${CONDA_INSTALL_DIR}" ]; then
+          echo "Failed to determine install directory for environment '${CONDA_ENV_NAME}'"
+          exit 1
+        fi
+
+        # for use by other things
+        echo "Outputs:"
+        echo "conda_install_dir=${CONDA_INSTALL_DIR}"
+        echo "conda_install_dir=${CONDA_INSTALL_DIR}" >> $GITHUB_OUTPUT
+        echo "conda_env=${CONDA_ENV_NAME}"
+        echo "conda_env=${CONDA_ENV_NAME}" >> $GITHUB_OUTPUT

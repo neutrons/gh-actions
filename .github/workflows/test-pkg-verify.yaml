@@ -1,0 +1,66 @@
+name: Test pkg-verify action
+
+"on":
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [next, qa, main]
+    tags: ["v*"]
+
+env:
+  PKG_NAME: quicknxs
+
+jobs:
+  test:
+    name: pkg-name is module-name
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install conda package
+        id: installer
+        uses: ./pkg-install
+        with:
+          # local-channel: /tmp/local-channel
+          package-name: ${{ env.PKG_NAME }}
+          extra-channels: neutrons mantid
+      - name: Verify conda package
+        uses: ./pkg-verify
+        with:
+          # local-channel: /tmp/local-channel
+          package-name: ${{ env.PKG_NAME }}
+          conda-env-name: ${{ steps.installer.outputs.conda_env }}
+          extra-commands: |
+            echo "This is a test of a multiline"
+            output=$(date)
+            echo "${output}"
+
+  test-with-module-name:
+    name: module-name
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install conda package
+        id: installer
+        uses: ./pkg-install
+        with:
+          # local-channel: /tmp/local-channel
+          package-name: ${{ env.PKG_NAME }}
+          extra-channels: neutrons mantid
+
+      - name: Verify conda package
+        uses: ./pkg-verify
+        with:
+          # local-channel: /tmp/local-channel
+          package-name: ${{ env.PKG_NAME }}
+          module-name: ${{ env.PKG_NAME }}
+          conda-env-name: ${{ steps.installer.outputs.conda_env }}

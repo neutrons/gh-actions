@@ -1,0 +1,64 @@
+name: Test publish action
+
+"on":
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [next, qa, main]
+    tags: ["v*"]
+
+jobs:
+  test-auto-label:
+    name: with auto-derived label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pixi
+        shell: bash
+        run: |
+          curl -fsSL https://pixi.sh/install.sh | bash
+          echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
+          "$HOME/.pixi/bin/pixi" --version
+
+      - name: Publish package (dry run)
+        uses: ./publish
+        with:
+          anaconda-token: unset_token
+          organization: neutronimaging
+          package-path: test-package-0.0.0-py_0.conda
+          github-ref: refs/heads/next
+          dry-run: true
+
+      - name: Verify workflow continued
+        shell: bash
+        run: echo "Dry-run publish with derived label completed"
+
+  test-explicit-label-force:
+    name: with explicit label and force
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pixi
+        shell: bash
+        run: |
+          curl -fsSL https://pixi.sh/install.sh | bash
+          echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
+          "$HOME/.pixi/bin/pixi" --version
+
+      - name: Publish package (dry run, force)
+        uses: ./publish
+        with:
+          anaconda-token: unset_token
+          organization: neutronimaging
+          package-path: test-package-0.0.0-py_0.conda
+          label: dev
+          force: true
+          dry-run: true
+
+      - name: Verify workflow continued
+        shell: bash
+        run: echo "Dry-run publish with explicit label completed"

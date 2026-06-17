@@ -1,0 +1,99 @@
+name: conda-publish
+description: Upload a pre-built conda package to Anaconda Cloud
+author: glass-ships
+branding:
+  icon: upload-cloud
+  color: green
+
+inputs:
+  anaconda-token:
+    description: Anaconda.org API token (store as a repository/org secret)
+    required: true
+  organization:
+    description: Anaconda.org organization or user name to publish under
+    required: true
+  package-path:
+    description: Path to the .conda file to upload.
+    required: true
+  github-ref:
+    description: |
+      GitHub ref (branch, tag, or commit) to include in the package metadata.
+      Defaults to the current ref of the workflow run.
+    required: false
+    default: ${{ github.ref }}
+  label:
+    description: |
+      Anaconda channel label to publish to (e.g. main, dev, nightly, rc).
+      Defaults to "main".
+    required: false
+    default: ""
+  force:
+    description: |
+      If true, overwrite an existing package file with the same name/version.
+    required: false
+    default: "false"
+  dry-run:
+    description: |
+      If true, print the upload command and skip publishing to Anaconda Cloud.
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check for pixi
+      shell: bash
+      run: |
+        if ! command -v pixi &>/dev/null; then
+          echo "pixi is not available. Please ensure pixi is installed and in PATH."
+          exit 1
+        fi
+        echo "pixi $(pixi --version) is available."
+
+    - name: Upload package to Anaconda Cloud
+      shell: bash
+      env:
+        ANACONDA_API_KEY: ${{ inputs.anaconda-token }}
+        ORGANIZATION: ${{ inputs.organization }}
+        REF: ${{ inputs.github-ref }}
+        LABEL: ${{ inputs.label }}
+        FORCE: ${{ inputs.force }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        set -euo pipefail
+
+        if [ "${LABEL}" = "" ]; then
+          echo "No label input provided. Determining label from GitHub ref '${REF}'..."
+          case "${REF}" in
+            refs/heads/next)  LABEL="dev" ;;
+            refs/tags/v*rc*)  LABEL="rc" ;;
+            refs/tags/v*)     LABEL="main" ;;
+            *)
+              echo "Could not determine label from ref '${REF}'."
+              echo "Please provide a label input or use a ref format like"
+              echo "'refs/heads/next' or 'refs/tags/vX.Y.Z[rcN]'."
+              exit 1
+              ;;
+          esac
+        fi
+        echo "Using label '${LABEL}' for upload."
+
+        upload_args=(
+          "--owner" "${ORGANIZATION}"
+          "--channel" "${LABEL}"
+        )
+        if [ "${FORCE}" = "true" ]; then
+          upload_args+=("--force")
+        fi
+        upload_args+=(${{ inputs.package-path }})
+
+        if [ "${DRY_RUN}" = "true" ]; then
+          echo "Dry run enabled. Skipping package upload."
+          echo "Would run: pixi upload anaconda ${upload_args[*]}"
+          exit 0
+        fi
+
+        echo "Uploading ${{ inputs.package-path }} to ${ORGANIZATION} with label '${LABEL}'"
+        pixi upload anaconda "${upload_args[@]}"
+
+        echo "Upload complete."

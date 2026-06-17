@@ -1,0 +1,75 @@
+name: pkg-verify
+description: Install and import a conda package with micromamba
+author: glass-ships
+branding:
+  icon: package
+  color: yellow
+
+inputs:
+  package-name:
+    description: Name of the package to install and verify
+    required: true
+  module-name:
+    description: Name of the python module, if different from package name
+    required: false
+  conda-env-name:
+    description: Name of the conda environment the package is installed in
+    required: true
+  extra-commands:
+    description: Additional bash commands to be run during the verification step.
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Verify the installation
+      shell: bash -el {0}
+      env:
+        PKG_NAME: ${{ inputs.package-name }}
+        MODULE_NAME: ${{ inputs.module-name }}
+        CONDA_TEST_ENV_NAME: ${{ inputs.conda-env-name }}
+        EXTRA_COMMANDS: ${{ inputs.extra-commands }}
+      run: |
+        echo "Verifying conda package in environment '${CONDA_TEST_ENV_NAME}'"
+        micromamba activate ${CONDA_TEST_ENV_NAME}
+
+        # parse package name from list of conda packages
+        conda_version=$(micromamba list "${PKG_NAME}" | awk -v pkg="${PKG_NAME}" '$1 == pkg { print $2 }')
+        if [ -z "${conda_version}" ]; then
+          echo "Failed to find version of ${PKG_NAME} from conda environment '${CONDA_TEST_ENV_NAME}'"
+          exit 1
+        fi
+
+        # get package version from list of conda packages
+        if [ -n "${MODULE_NAME}" ]; then
+          python_version=$(python -c "import ${MODULE_NAME}; print(${MODULE_NAME}.__version__)" | tail -n 1)
+        else
+          python_version=$(python -c "import ${PKG_NAME}; print(${PKG_NAME}.__version__)" | tail -n 1)
+        fi
+        if [ -z "${python_version}" ]; then
+          echo "Failed to find version of ${PKG_NAME} from python module"
+          exit 1
+        fi
+
+        # print simple version results
+        echo "------------------------"
+        echo "Conda version: $conda_version"
+        echo "Python version: $python_version"
+
+        if [ "$conda_version" != "$python_version" ]; then
+          echo -e "\nVersion mismatch!\m"
+          exit 1
+        else
+          echo "Versions match."
+        fi
+
+        # print extra results
+        echo "------------------------"
+        if [ -n "${EXTRA_COMMANDS}" ]; then
+          echo "Running additional commands:"
+          readarray -t commands <<< "${EXTRA_COMMANDS}"
+          for cmd in "${commands[@]}"; do
+            echo -e "\n> ${cmd}"
+            eval "${cmd}"
+          done
+        fi

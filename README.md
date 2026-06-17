@@ -1,17 +1,24 @@
-# Neutrons Conda Actions for GitHub
+# Neutrons GitHub Actions
 
 ## Overview
 
-This repository contains GitHub actions for common conda package workflows, including installing a package into a test environment, verifying that it imports correctly, removing old packages from Anaconda Cloud, and publishing packages to Anaconda Cloud.
+This repository contains GitHub actions for common workflows, such as interacting with conda packages, linting, and branch management.  
+These actions are designed to be reusable across different neutron science projects.
 
 Some actions assume you have already built a `.conda` package. When using a local package artifact, place it in a conda-style channel directory (see [conda-index](https://github.com/conda/conda-index)).
 
-Available actions:
+### Available actions:
+
+Conda package actions:
 
 - [pkg-install](#pkg-install): Create a micromamba environment and install a conda package into it.
 - [pkg-verify](#pkg-verify): Verify an already-installed conda package by importing it in Python and checking that the conda and Python versions match.
 - [pkg-remove](#pkg-remove): Clean up old conda packages from Anaconda Cloud.
 - [publish](#publish): Publish a conda package to Anaconda Cloud.
+
+Other actions:
+
+- [branch-mapper](#branch-mapper): Map GitHub refs to standard environment names for use in CI workflows.
 - [grype](#grype): Run an Anchore Grype vulnerability scan and upload the SARIF results to GitHub Security.
 
 ## pkg-install
@@ -24,20 +31,20 @@ Full list of available inputs in [`pkg-install/action.yml`](pkg-install/action.y
 
 Inputs:
 
-| Input | Description | Required | Default |
-| ---------------- | --------------------------------------------------------------------------------- | -------- | ------- |
-| `package-name` | Name of the conda package to install | Yes | - |
-| `local-channel` | Path to a local conda channel containing the package | No | - |
-| `python-version` | Python version to install into the test environment (for example `3.10`) | No | - |
-| `extra-channels` | Additional conda channels to use during installation | No | - |
-| `post-cleanup` | Micromamba cleanup mode passed to `setup-micromamba` | No | `shell-init` |
+| Input            | Description                                                              | Required | Default      |
+| ---------------- | ------------------------------------------------------------------------ | -------- | ------------ |
+| `package-name`   | Name of the conda package to install                                     | Yes      | -            |
+| `local-channel`  | Path to a local conda channel containing the package                     | No       | -            |
+| `python-version` | Python version to install into the test environment (for example `3.10`) | No       | -            |
+| `extra-channels` | Additional conda channels to use during installation                     | No       | -            |
+| `post-cleanup`   | Micromamba cleanup mode passed to `setup-micromamba`                     | No       | `shell-init` |
 
 Outputs:
 
-| Output | Description |
-| ------------------- | ---------------------------------------- |
-| `conda_env` | Name of the created conda environment |
-| `conda_install_dir` | Filesystem path of the created env |
+| Output              | Description                           |
+| ------------------- | ------------------------------------- |
+| `conda_env`         | Name of the created conda environment |
+| `conda_install_dir` | Filesystem path of the created env    |
 
 Example:
 
@@ -75,12 +82,12 @@ Full list of available inputs in [`pkg-verify/action.yaml`](pkg-verify/action.ya
 
 Inputs:
 
-| Input | Description | Required | Default |
-| ---------------- | --------------------------------------------------------------------------------- | -------- | ------- |
-| `package-name` | Name of the conda package | Yes | - |
-| `module-name` | Name of the Python module to import (if different from package name) | No | - |
-| `conda-env-name` | Name of the conda environment where the package is already installed | Yes | - |
-| `extra-commands` | Additional shell commands to run during verification (newline-separated) | No | - |
+| Input            | Description                                                              | Required | Default |
+| ---------------- | ------------------------------------------------------------------------ | -------- | ------- |
+| `package-name`   | Name of the conda package                                                | Yes      | -       |
+| `module-name`    | Name of the Python module to import (if different from package name)     | No       | -       |
+| `conda-env-name` | Name of the conda environment where the package is already installed     | Yes      | -       |
+| `extra-commands` | Additional shell commands to run during verification (newline-separated) | No       | -       |
 
 Example usage in a GitHub workflow:
 
@@ -140,18 +147,18 @@ Full list of available inputs in [`pkg-remove/action.yaml`](pkg-remove/action.ya
 
 Inputs:
 
-| Input | Description | Required | Default |
+| Input            | Description                                                           | Required | Default |
 | ---------------- | --------------------------------------------------------------------- | -------- | ------- |
-| `anaconda_token` | Anaconda.org API token | Yes | - |
-| `organization` | Anaconda.org organization or user name | Yes | - |
-| `package_name` | Name of the conda package to clean up | Yes | - |
-| `label` | Label to target for cleanup (e.g., `dev`, `nightly`, `rc`) | No | `dev` |
-| `keep` | Number of most recent package versions to keep | No | `5` |
-| `dry_run` | If `true`, only print what would be deleted without actually deleting | No | `false` |
+| `anaconda_token` | Anaconda.org API token                                                | Yes      | -       |
+| `organization`   | Anaconda.org organization or user name                                | Yes      | -       |
+| `package_name`   | Name of the conda package to clean up                                 | Yes      | -       |
+| `label`          | Label to target for cleanup (e.g., `dev`, `nightly`, `rc`)            | No       | `dev`   |
+| `keep`           | Number of most recent package versions to keep                        | No       | `5`     |
+| `dry_run`        | If `true`, only print what would be deleted without actually deleting | No       | `false` |
 
 Outputs:
 
-| Output | |
+| Output        |                                       |
 | ------------- | ------------------------------------- |
 | `num_removed` | Number of files that would be deleted |
 
@@ -172,6 +179,69 @@ jobs:
           keep: 5
 ```
 
+
+## publish
+
+GitHub action to publish a pre-built conda package to Anaconda Cloud.
+
+This action assumes that:
+
+- The package has already been built and is available at the path given by `package-path`
+- Either `anaconda-client` is available in `PATH`, or `pixi` is available so the action can run or install `anaconda-client`
+
+If `label` is not provided, the action will attempt to determine it from `github-ref`:
+
+- If the ref is tagged `refs/tags/v*rc*`, the package will be published to the `rc` label
+- If the ref is tagged `refs/tags/v*`, the package will be published to the `main` label
+- If the ref is tagged `refs/heads/next`, the package will be published to the `dev` label
+- If the label cannot be determined from the ref, the action will fail
+
+#### Usage
+
+Full list of available inputs in [`publish/action.yaml`](publish/action.yaml).
+
+Inputs:
+
+| Input            | Description                                                               | Required | Default                    |
+| ---------------- | ------------------------------------------------------------------------- | -------- | -------------------------- |
+| `anaconda-token` | Anaconda.org API token                                                    | Yes      | -                          |
+| `organization`   | Anaconda.org organization or user name                                    | Yes      | -                          |
+| `package-path`   | Path to the conda package to publish                                      | Yes      | -                          |
+| `github-ref`     | GitHub ref (for example `refs/tags/v1.0.0`) used when inferring the label | No       | `github.ref`               |
+| `label`          | Label to apply to the package (e.g., `main`, `dev`, `nightly`, `rc`)      | No       | inferred from `github-ref` |
+| `force`          | If `true`, overwrite existing package with the same version               | No       | `false`                    |
+| `dry-run`        | If `true`, print the upload command and skip publishing                   | No       | `false`                    |
+
+Example:
+
+```yaml
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+
+      - uses: prefix-dev/setup-pixi@main
+
+      - name: Build package
+        run: |
+          # steps to build your .conda package, for example:
+          pixi build
+
+      - name: Publish package to Anaconda Cloud
+        uses: neutrons/conda-actions/publish@main
+        with:
+          anaconda-token: ${{ secrets.ANACONDA_TOKEN }}
+          organization: neutrons
+          package-path: my-package-*.conda
+```
+
+-----
+
+## branch-mapper
+
+GitHub action to map GitHub refs to standard environment names for use in CI workflows.
+
 ## grype
 
 GitHub action to run an [Anchore Grype](https://github.com/anchore/grype) vulnerability scan on a directory and upload the SARIF results to GitHub Security.
@@ -182,11 +252,11 @@ Full list of available inputs in [`grype/action.yml`](grype/action.yml).
 
 Inputs:
 
-| Input | Description | Required | Default |
-| ------------- | -------------------------------------------------------- | -------- | ------- |
-| `path` | Path to scan (e.g. a conda environment directory) | Yes | - |
-| `fail-build` | Fail the build if vulnerabilities are found | No | `false` |
-| `only-fixed` | Only report vulnerabilities that have a fix available | No | `true` |
+| Input        | Description                                           | Required | Default |
+| ------------ | ----------------------------------------------------- | -------- | ------- |
+| `path`       | Path to scan (e.g. a conda environment directory)     | Yes      | -       |
+| `fail-build` | Fail the build if vulnerabilities are found           | No       | `false` |
+| `only-fixed` | Only report vulnerabilities that have a fix available | No       | `true`  |
 
 Example:
 
@@ -216,60 +286,4 @@ jobs:
         uses: neutrons/conda-actions/grype@main
         with:
           path: ${{ steps.install.outputs.conda_install_dir }}
-```
-
-## publish
-
-GitHub action to publish a pre-built conda package to Anaconda Cloud.
-
-This action assumes that:
-
-- The package has already been built and is available at the path given by `package-path`
-- Either `anaconda-client` is available in `PATH`, or `pixi` is available so the action can run or install `anaconda-client`
-
-If `label` is not provided, the action will attempt to determine it from `github-ref`:
-
-- If the ref is tagged `refs/tags/v*rc*`, the package will be published to the `rc` label
-- If the ref is tagged `refs/tags/v*`, the package will be published to the `main` label
-- If the ref is tagged `refs/heads/next`, the package will be published to the `dev` label
-- If the label cannot be determined from the ref, the action will fail
-
-#### Usage
-
-Full list of available inputs in [`publish/action.yaml`](publish/action.yaml).
-
-Inputs:
-
-| Input | Description | Required | Default |
-| ---------------- | ------------------------------------------------------------ | -------- | ---------- |
-| `anaconda-token` | Anaconda.org API token | Yes | - |
-| `organization` | Anaconda.org organization or user name | Yes | - |
-| `package-path` | Path to the conda package to publish | Yes | - |
-| `github-ref` | GitHub ref (for example `refs/tags/v1.0.0`) used when inferring the label | No | `github.ref` |
-| `label` | Label to apply to the package (e.g., `main`, `dev`, `nightly`, `rc`) | No | inferred from `github-ref` |
-| `force` | If `true`, overwrite existing package with the same version | No | `false` |
-| `dry-run` | If `true`, print the upload command and skip publishing | No | `false` |
-
-Example:
-
-```yaml
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@main
-
-      - uses: prefix-dev/setup-pixi@main
-
-      - name: Build package
-        run: |
-          # steps to build your .conda package, for example:
-          pixi build
-
-      - name: Publish package to Anaconda Cloud
-        uses: neutrons/conda-actions/publish@main
-        with:
-          anaconda-token: ${{ secrets.ANACONDA_TOKEN }}
-          organization: neutrons
-          package-path: my-package-*.conda
 ```

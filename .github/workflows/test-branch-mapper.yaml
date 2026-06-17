@@ -1,0 +1,53 @@
+name: Test branch mapper action
+
+on: [push, pull_request]
+
+jobs:
+  test-against-gitlab:
+    name: Test against local environment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # test default behavior
+      - name: Map random branch name to environment
+        id: trigger-default
+        uses: ./branch-mapper
+        with:
+          prefix: testing-default
+          reference: "refs/heads/next"
+
+      - name: Print json and web_url for further use
+        run: |
+          test -n ${{ steps.trigger-default.outputs.name }}
+          test -n ${{ steps.trigger-default.outputs.name }}
+          echo "final name=${{ steps.trigger-default.outputs.name }}"
+
+      # test release candidate
+      - name: Map release candidate tag to qa
+        id: trigger-qa
+        uses: ./branch-mapper
+        with:
+          prefix: testing
+          reference: "refs/tags/v1.2.3rc2"
+      - name: Print json and web_url for further use
+        run: |
+          echo "final name=${{ steps.trigger-qa.outputs.name }}"
+          test -n ${{ steps.trigger-qa.outputs.name }}
+          test "testing-qa" = ${{ steps.trigger-qa.outputs.name }}
+
+      # test production release
+      - name: Map full release tag to production
+        id: trigger-prod
+        uses: ./branch-mapper
+        with:
+          prefix: testing
+          reference: "refs/tags/v1.2.3"
+          suffix-release: "-release"
+      - name: Print json and web_url for further use
+        run: |
+          echo "final name=${{ steps.trigger-prod.outputs.name }}"
+          test -n ${{ steps.trigger-prod.outputs.name }}
+          test "testing-release" = ${{ steps.trigger-prod.outputs.name }}

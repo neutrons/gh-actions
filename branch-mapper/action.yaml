@@ -1,0 +1,67 @@
+name: "Trigger GitLab CI through webhooks"
+description: "Triggers the GitLab CI pipeline through webhook pipeline trigger and associated token"
+branding:
+  icon: "play"
+  color: "blue"
+
+inputs:
+  prefix:
+    description: "Prefix for the output name"
+    required: true
+  suffix-release:
+    description: "Suffix for releases (default empty)"
+    required: false
+    default: ""
+  suffix-release-candidate:
+    description: "Suffix for release candidates (default -qa)"
+    required: false
+    default: "-qa"
+  suffix-default:
+    description: "Suffix for all other versions (default -dev)"
+    required: false
+    default: "-dev"
+  reference:
+    description: "Name of the github reference. This is intended for testing"
+    required: false
+    default: ${{ github.ref }}
+
+outputs:
+  name:
+    description: "GitLab webhook response (JSON)"
+    value: ${{ steps.determine-name.outputs.name }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Verify prefix was specified
+      run: |
+        if [ -z "${{ inputs.prefix }}" ]; then
+           echo "::error ::Failed to specify prefix to neutrons/branch-mapper"
+           exit 1
+        fi
+      shell: bash
+    - name: Map reference to name
+      id: determine-name
+      run: |
+        echo "::debug::REFERENCE=${REFERENCE}"
+        case ${REFERENCE} in
+          # tags that start with v and have rc in the name
+          refs/tags/v*rc*)
+            echo "name=${PREFIX}${{ inputs.suffix-release-candidate }}" >> $GITHUB_OUTPUT
+            ;;
+
+          # tags that start with v and aren't including rc
+          refs/tags/v*)
+            echo "name=${PREFIX}${{ inputs.suffix-release }}" >> $GITHUB_OUTPUT
+           ;;
+
+          # everything else gets is a development version
+          *)
+            echo "name=${PREFIX}${{ inputs.suffix-default }}" >> $GITHUB_OUTPUT
+            ;;
+
+          esac
+      shell: bash
+      env:
+        PREFIX: ${{ inputs.prefix }}
+        REFERENCE: ${{ inputs.reference }}

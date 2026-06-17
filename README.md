@@ -64,7 +64,7 @@ jobs:
 
       - name: Install Conda Package
         id: install
-        uses: neutrons/conda-actions/pkg-install@main
+        uses: neutrons/gh-actions/pkg-install@main
         with:
           local-channel: /tmp/local-channel
           package-name: ${{ env.PKG_NAME }}
@@ -123,14 +123,14 @@ jobs:
 
       - name: Install Conda Package
         id: install
-        uses: neutrons/conda-actions/pkg-install@main
+        uses: neutrons/gh-actions/pkg-install@main
         with:
           local-channel: /tmp/local-channel
           package-name: ${{ env.PKG_NAME }}
           extra-channels: mantid neutrons pyoncat
 
       - name: Verify Conda Package
-        uses: neutrons/conda-actions/pkg-verify@main
+        uses: neutrons/gh-actions/pkg-verify@main
         with:
           package-name: ${{ env.PKG_NAME }}
           conda-env-name: ${{ steps.install.outputs.conda_env }}
@@ -170,7 +170,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Remove old dev packages
-        uses: neutrons/conda-actions/pkg-remove@main
+        uses: neutrons/gh-actions/pkg-remove@main
         with:
           anaconda_token: ${{ secrets.ANACONDA_TOKEN }}
           organization: neutrons
@@ -178,7 +178,6 @@ jobs:
           label: dev
           keep: 5
 ```
-
 
 ## publish
 
@@ -219,7 +218,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@main`
 
       - uses: prefix-dev/setup-pixi@main
 
@@ -229,18 +228,67 @@ jobs:
           pixi build
 
       - name: Publish package to Anaconda Cloud
-        uses: neutrons/conda-actions/publish@main
+        uses: neutrons/gh-actions/publish@main
         with:
           anaconda-token: ${{ secrets.ANACONDA_TOKEN }}
           organization: neutrons
           package-path: my-package-*.conda
 ```
 
------
+---
 
 ## branch-mapper
 
 GitHub action to map GitHub refs to standard environment names for use in CI workflows.
+
+#### Usage
+
+Full list of available inputs in [`branch-mapper/action.yaml`](branch-mapper/action.yaml).
+
+Inputs:
+
+| Input                      | Description                                              | Required | Default      |
+| -------------------------- | -------------------------------------------------------- | -------- | ------------ |
+| `prefix`                   | Prefix to add to the mapped branch name (e.g. `my-pkg`)  | Yes      | -            |
+| `suffix-release`           | Suffix for releases                                      | No       | None         |
+| `suffix-release-candidate` | Suffix for release candidates                            | No       | `-qa`        |
+| `suffix-default`           | Suffix for all other versions                            | No       | `-dev`       |
+| `reference`                | GitHub ref to map (e.g. `github.ref`) - used for testing | No       | `github.ref` |
+
+Outputs:
+
+| Output | Description                                             |
+| ------ | ------------------------------------------------------- |
+| `name` | Mapped label (e.g. `my-pkg`, `my-pkg-qa`, `my-pkg-dev`) |
+
+Example:
+
+```yaml
+jobs:
+  deploy-software:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine deploy environment
+        uses: neutrons/gh-actions/branch-mapper@main
+        id: deploy-name
+        with:
+          prefix: super-awesome-software
+
+      - name: Trigger deployment
+        uses: eic/trigger-gitlab-ci@v3
+        id: trigger
+        with:
+          project_id: 12345
+          token: ${{ secrets.TOKEN }}
+          variables: |
+            CONDA_ENV="${{ steps.deploy-name.outputs.name }}"
+
+      - name: Annotate commit
+        uses: peter-evans/commit-comment@v4
+        with:
+          body: |
+            GitLab pipeline for ${{ steps.deployname.outputs.name }} has been submitted for this commit: ${{ steps.trigger.outputs.web_url }}
+```
 
 ## grype
 
@@ -278,12 +326,12 @@ jobs:
 
       - name: Install Conda Package
         id: install
-        uses: neutrons/conda-actions/pkg-install@main
+        uses: neutrons/gh-actions/pkg-install@main
         with:
           package-name: ${{ env.PKG_NAME }}
 
       - name: Scan with Grype
-        uses: neutrons/conda-actions/grype@main
+        uses: neutrons/gh-actions/grype@main
         with:
           path: ${{ steps.install.outputs.conda_install_dir }}
 ```

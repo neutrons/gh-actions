@@ -38,7 +38,7 @@ jobs:
     steps:
       # allows for using actions
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       # in normal usage would add the following for just the grype config
       #  with:
       #    sparse-checkout: |

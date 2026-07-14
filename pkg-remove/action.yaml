@@ -65,7 +65,8 @@ runs:
         fi
 
         if [ -z "${CMD_PATH:-}" ]; then
-          echo "No anaconda-client executable found after setup."
+          echo "anaconda-client was installed but no supported executable"
+          echo "(anaconda, binstar, conda-server) was found in PATH."
           exit 1
         fi
         echo "CMD=${CMD_PATH}" >> $GITHUB_OUTPUT
@@ -135,7 +136,7 @@ runs:
           for FILE in ${FILES_TO_REMOVE}; do
             echo "Removing ${FILE}"
             if [ "${DRY_RUN}" = "true" ]; then
-              echo "Remove command: '${CMD} remove --force ${FILE}'"
+              echo "Remove command: '\"${CMD}\" remove --force \"${FILE}\"'"
             else
               "${CMD}" remove --force "${FILE}"
             fi

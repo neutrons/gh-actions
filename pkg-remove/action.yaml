@@ -56,6 +56,11 @@ runs:
           CMD_PATH=$(command -v anaconda || command -v binstar || command -v conda-server)
           echo "Using installed anaconda-client command at ${CMD_PATH}"
         fi
+
+        if [ -z "${CMD_PATH:-}" ]; then
+          echo "No anaconda-client executable found after setup."
+          exit 1
+        fi
         echo "CMD=${CMD_PATH}" >> $GITHUB_OUTPUT
 
     - name: Remove old labeled packages

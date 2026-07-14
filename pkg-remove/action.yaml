@@ -41,36 +41,23 @@ runs:
       id: get_command
       shell: bash
       run: |
-        resolve_anaconda_cmd() {
-          if command -v anaconda &>/dev/null; then
-            command -v anaconda
-            return 0
-          fi
-          return 1
-        }
-
-        CMD_PATH="$(resolve_anaconda_cmd || true)"
-        if [ -z "${CMD_PATH}" ]; then
-          echo "Checking for 'pixi' command..."
-          if ! command -v pixi &>/dev/null; then
-            echo "Neither 'anaconda' command nor 'pixi' is available."
-            echo "Please ensure that anaconda-client is installed and available in PATH or via pixi."
-            exit 1
-          fi
-
-          echo "'pixi' command is available but anaconda client command is not found. Installing anaconda-client..."
-          pixi global install anaconda-client
-          hash -r
-
-          CMD_PATH="$(resolve_anaconda_cmd || true)"
-          if [ -z "${CMD_PATH}" ]; then
-            echo "anaconda-client installation completed, but 'anaconda' is still not available in PATH."
-            exit 1
-          fi
+        if ! command -v anaconda &>/dev/null && ! command -v pixi &>/dev/null; then
+          echo "Neither 'anaconda' command nor 'pixi' is available."
+          echo "Please ensure that anaconda-client is installed and available in PATH or via pixi."
+          exit 1
         fi
 
-        echo "Using anaconda client command at: ${CMD_PATH}"
-        echo "CMD_PATH=${CMD_PATH}" >> $GITHUB_OUTPUT
+        if command -v anaconda &>/dev/null; then
+          CMD_PATH=$(command -v anaconda)
+          echo "Using 'anaconda' command at ${CMD_PATH}"
+        elif command -v pixi &>/dev/null; then
+          echo "'pixi' command is available but not 'anaconda'. Installing anaconda-client via pixi."
+          pixi global install anaconda-client
+          CMD_PATH=$(command -v anaconda)
+          echo "Using installed 'anaconda' command at ${CMD_PATH}"
+        fi
+        echo "CMD=${CMD_PATH}" >> $GITHUB_OUTPUT
+
     - name: Remove old labeled packages
       id: remove_pkg
       shell: bash
@@ -85,8 +72,8 @@ runs:
 
         set -euo pipefail
 
-        CMD_PATH="${{ steps.get_command.outputs.CMD_PATH }}"
-        if [ -z "${CMD_PATH}" ]; then
+        CMD="${{ steps.get_command.outputs.CMD }}"
+        if [ -z "${CMD}" ]; then
           echo "No output detected from previous step."
           exit 1
         fi

@@ -53,7 +53,12 @@ runs:
         elif command -v pixi &>/dev/null; then
           echo "'pixi' command is available but not 'anaconda'. Installing anaconda-client via pixi."
           pixi global install anaconda-client
-          CMD_PATH=$(command -v anaconda || command -v binstar || command -v conda-server)
+          for candidate in anaconda binstar conda-server; do
+            if command -v "${candidate}" &>/dev/null; then
+              CMD_PATH=$(command -v "${candidate}")
+              break
+            fi
+          done
           echo "Using installed anaconda-client command at ${CMD_PATH}"
         fi
 
@@ -129,7 +134,6 @@ runs:
             echo "Removing ${FILE}"
             if [ "${DRY_RUN}" = "true" ]; then
               echo "Remove command: '${CMD} remove --force ${FILE}'"
-              "${CMD}" --version
             else
               "${CMD}" remove --force "${FILE}"
             fi

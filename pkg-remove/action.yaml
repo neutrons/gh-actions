@@ -53,8 +53,8 @@ runs:
         elif command -v pixi &>/dev/null; then
           echo "'pixi' command is available but not 'anaconda'. Installing anaconda-client via pixi."
           pixi global install anaconda-client
-          CMD_PATH=$(command -v anaconda)
-          echo "Using installed 'anaconda' command at ${CMD_PATH}"
+          CMD_PATH=$(command -v anaconda || command -v binstar || command -v conda-server)
+          echo "Using installed anaconda-client command at ${CMD_PATH}"
         fi
         echo "CMD=${CMD_PATH}" >> $GITHUB_OUTPUT
 
@@ -113,7 +113,7 @@ runs:
         echo "dry-run=${{ env.DRY_RUN }}"
 
         # count how many files are removed
-        num_removed=0 
+        num_removed=0
 
         if [ -z "${FILES_TO_REMOVE}" ]; then
           echo "No old files to remove from ${{ env.LABEL }}"
@@ -123,10 +123,10 @@ runs:
           for FILE in ${FILES_TO_REMOVE}; do
             echo "Removing ${FILE}"
             if [ "${DRY_RUN}" = "true" ]; then
-              echo "Remove command: '${CMD_PATH} remove --force ${FILE}'"
-              "${CMD_PATH}" --version
+              echo "Remove command: '${CMD} remove --force ${FILE}'"
+              "${CMD}" --version
             else
-              "${CMD_PATH}" remove --force "${FILE}"
+              "${CMD}" remove --force "${FILE}"
             fi
             num_removed=$((num_removed+1))
           done

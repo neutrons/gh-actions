@@ -126,7 +126,7 @@ runs:
             echo "Removing ${FILE}"
             remove_cmd="${CMD} remove --force ${FILE}"
             if [ "${DRY_RUN}" = "true" ]; then
-              echo "Remove command: `${remove_cmd}`"
+              echo "Remove command: '${remove_cmd}'"
               ${CMD} --version
             else
               ${remove_cmd}

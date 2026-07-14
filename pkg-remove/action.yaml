@@ -41,25 +41,36 @@ runs:
       id: get_command
       shell: bash
       run: |
-        if command -v anaconda &>/dev/null; then
-          echo "'anaconda' is available. Using it for command."
-          echo "CMD=anaconda" >> $GITHUB_OUTPUT
-        elif pixi run anaconda --version &>/dev/null; then
-          echo "anaconda is available via pixi. Using 'pixi run anaconda' for command."
-          echo "CMD=pixi run anaconda" >> $GITHUB_OUTPUT
-        else
-            echo "Checking for 'pixi' command..."
-            if command -v pixi &>/dev/null; then
-              echo "'pixi' command is available but 'anaconda' is not found. Installing anaconda-client..."
-              pixi global install anaconda-client
-              echo "Using 'pixi run anaconda' for command after installation."
-              echo "CMD=pixi run anaconda" >> $GITHUB_OUTPUT
-            else
-              echo "Neither 'anaconda' command nor 'pixi' is available."
-              echo "Please ensure that anaconda-client is installed and available in PATH or via pixi."
-              exit 1
-            fi
+        resolve_anaconda_cmd() {
+          if command -v anaconda &>/dev/null; then
+            command -v anaconda
+            return 0
+          fi
+          return 1
+        }
+
+        CMD_PATH="$(resolve_anaconda_cmd || true)"
+        if [ -z "${CMD_PATH}" ]; then
+          echo "Checking for 'pixi' command..."
+          if ! command -v pixi &>/dev/null; then
+            echo "Neither 'anaconda' command nor 'pixi' is available."
+            echo "Please ensure that anaconda-client is installed and available in PATH or via pixi."
+            exit 1
+          fi
+
+          echo "'pixi' command is available but anaconda client command is not found. Installing anaconda-client..."
+          pixi global install anaconda-client
+          hash -r
+
+          CMD_PATH="$(resolve_anaconda_cmd || true)"
+          if [ -z "${CMD_PATH}" ]; then
+            echo "anaconda-client installation completed, but 'anaconda' is still not available in PATH."
+            exit 1
+          fi
         fi
+
+        echo "Using anaconda client command at: ${CMD_PATH}"
+        echo "CMD_PATH=${CMD_PATH}" >> $GITHUB_OUTPUT
     - name: Remove old labeled packages
       id: remove_pkg
       shell: bash
@@ -74,8 +85,8 @@ runs:
 
         set -euo pipefail
 
-        CMD="${{ steps.get_command.outputs.CMD }}"
-        if [ -z "${CMD}" ]; then
+        CMD_PATH="${{ steps.get_command.outputs.CMD_PATH }}"
+        if [ -z "${CMD_PATH}" ]; then
           echo "No output detected from previous step."
           exit 1
         fi
@@ -83,7 +94,7 @@ runs:
         ANACONDA_URL="https://api.anaconda.org/package/"
         ANACONDA_URL="${ANACONDA_URL}${{ env.ORGANIZATION }}/${{ env.PACKAGE_NAME }}"
 
-        RAW_RESULT=$(curl --max-time 5.5 -s ${ANACONDA_URL})
+        RAW_RESULT=$(curl --max-time 5.5 -s "${ANACONDA_URL}")
         if [ -z "${RAW_RESULT}" ]; then
           echo "Curl returned empty result"
           exit 1
@@ -124,12 +135,11 @@ runs:
           echo "Removing old ${{ env.LABEL }} files"
           for FILE in ${FILES_TO_REMOVE}; do
             echo "Removing ${FILE}"
-            remove_cmd="${CMD} remove --force ${FILE}"
             if [ "${DRY_RUN}" = "true" ]; then
-              echo "Remove command: '${remove_cmd}'"
-              ${CMD} --version
+              echo "Remove command: '${CMD_PATH} remove --force ${FILE}'"
+              "${CMD_PATH}" --version
             else
-              ${remove_cmd}
+              "${CMD_PATH}" remove --force "${FILE}"
             fi
             num_removed=$((num_removed+1))
           done

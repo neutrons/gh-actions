@@ -41,6 +41,8 @@ runs:
       id: get_command
       shell: bash
       run: |
+        CMD_PATH=""
+
         if ! command -v anaconda &>/dev/null && ! command -v pixi &>/dev/null; then
           echo "Neither 'anaconda' command nor 'pixi' is available."
           echo "Please ensure that anaconda-client is installed and available in PATH or via pixi."

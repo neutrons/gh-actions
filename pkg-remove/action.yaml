@@ -96,6 +96,18 @@ runs:
           exit 1
         fi
 
+        ### DEBUG BLOCK ###
+        if [ -z "${ANACONDA_API_TOKEN:-}" ]; then
+          echo "ANACONDA_API_TOKEN is empty. anaconda-client silently omits the"
+          echo "Authorization header when the token is blank, which results in a"
+          echo "confusing 401 Unauthorized error from the Anaconda.org API."
+          echo "Please ensure the 'anaconda_token' input is set to a valid,"
+          echo "non-empty token (e.g. check that the referenced secret exists"
+          echo "and is available in this workflow's context)."
+          exit 1
+        fi
+        ### END DEBUG BLOCK ### 
+
         ANACONDA_URL="https://api.anaconda.org/package/"
         ANACONDA_URL="${ANACONDA_URL}${{ env.ORGANIZATION }}/${{ env.PACKAGE_NAME }}"
 

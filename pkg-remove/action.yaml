@@ -37,10 +37,18 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Ensure anaconda token is set
+      id: check_token
+      if: ${{ inputs.anaconda_token == '' }}
+      run: |
+        echo "Anaconda.org API token is not set. Please provide a valid token."
+        exit 1
+
     - name: Ensure anaconda command
       id: get_command
       shell: bash
       run: |
+        echo "Checking for anaconda command or pixi..."
         CMD_PATH=""
 
         if ! command -v anaconda &>/dev/null && ! command -v pixi &>/dev/null; then
@@ -93,16 +101,6 @@ runs:
         CMD="${{ steps.get_command.outputs.CMD }}"
         if [ -z "${CMD}" ]; then
           echo "No output detected from previous step."
-          exit 1
-        fi
-
-        if [ -z "${ANACONDA_API_TOKEN:-}" ]; then
-          echo "ANACONDA_API_TOKEN is empty. anaconda-client silently omits the"
-          echo "Authorization header when the token is blank, which results in a"
-          echo "confusing 401 Unauthorized error from the Anaconda.org API."
-          echo "Please ensure the 'anaconda_token' input is set to a valid,"
-          echo "non-empty token (e.g. check that the referenced secret exists"
-          echo "and is available in this workflow's context)."
           exit 1
         fi
 

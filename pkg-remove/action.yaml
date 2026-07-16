@@ -6,9 +6,6 @@ branding:
   color: red
 
 inputs:
-  anaconda_token:
-    description: Anaconda.org API token
-    required: true
   organization:
     description: Anaconda.org organization or user name
     required: true
@@ -28,6 +25,11 @@ inputs:
     description: If true, only print what would be deleted without actually deleting
     required: false
     default: "false"
+
+secrets:
+  anaconda_token:
+    description: Anaconda.org API token
+    required: true
 
 outputs:
   num_removed:

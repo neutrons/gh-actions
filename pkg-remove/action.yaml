@@ -55,6 +55,11 @@ runs:
         elif command -v pixi &>/dev/null; then
           echo "'pixi' command is available but not 'anaconda'. Installing anaconda-client via pixi."
           pixi global install anaconda-client
+
+          export PATH="${PIXI_HOME:-${HOME}/.pixi}/bin:${PATH}"
+          echo "${PIXI_HOME:-${HOME}/.pixi}/bin" >> "$GITHUB_PATH"
+          hash -r
+
           for candidate in anaconda binstar conda-server; do
             if command -v "${candidate}" &>/dev/null; then
               CMD_PATH=$(command -v "${candidate}")

@@ -43,8 +43,8 @@ Outputs:
 
 | Output              | Description                           |
 | ------------------- | ------------------------------------- |
-| `conda_env`         | Name of the created conda environment |
-| `conda_install_dir` | Filesystem path of the created env    |
+| `conda-env`         | Name of the created conda environment |
+| `conda-install-dir` | Filesystem path of the created env    |
 
 Example:
 
@@ -133,7 +133,7 @@ jobs:
         uses: neutrons/gh-actions/pkg-verify@main
         with:
           package-name: ${{ env.PKG_NAME }}
-          conda-env-name: ${{ steps.install.outputs.conda_env }}
+          conda-env-name: ${{ steps.install.outputs.conda-env }}
 ```
 
 ## pkg-remove
@@ -149,18 +149,18 @@ Inputs:
 
 | Input            | Description                                                           | Required | Default |
 | ---------------- | --------------------------------------------------------------------- | -------- | ------- |
-| `anaconda_token` | Anaconda.org API token                                                | Yes      | -       |
+| `anaconda-token` | Anaconda.org API token                                                | Yes      | -       |
 | `organization`   | Anaconda.org organization or user name                                | Yes      | -       |
-| `package_name`   | Name of the conda package to clean up                                 | Yes      | -       |
+| `package-name`   | Name of the conda package to clean up                                 | Yes      | -       |
 | `label`          | Label to target for cleanup (e.g., `dev`, `nightly`, `rc`)            | No       | `dev`   |
 | `keep`           | Number of most recent package versions to keep                        | No       | `5`     |
-| `dry_run`        | If `true`, only print what would be deleted without actually deleting | No       | `false` |
+| `dry-run`        | If `true`, only print what would be deleted without actually deleting | No       | `false` |
 
 Outputs:
 
 | Output        |                                       |
 | ------------- | ------------------------------------- |
-| `num_removed` | Number of files that would be deleted |
+| `num-removed` | Number of files that would be deleted |
 
 Example:
 
@@ -172,9 +172,9 @@ jobs:
       - name: Remove old dev packages
         uses: neutrons/gh-actions/pkg-remove@main
         with:
-          anaconda_token: ${{ secrets.ANACONDA_TOKEN }}
+          anaconda-token: ${{ secrets.ANACONDA_TOKEN }}
           organization: neutrons
-          package_name: my-package
+          package-name: my-package
           label: dev
           keep: 5
 ```
@@ -333,5 +333,5 @@ jobs:
       - name: Scan with Grype
         uses: neutrons/gh-actions/grype@main
         with:
-          path: ${{ steps.install.outputs.conda_install_dir }}
+          path: ${{ steps.install.outputs.conda-install-dir }}
 ```

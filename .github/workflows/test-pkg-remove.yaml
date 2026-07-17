@@ -24,17 +24,17 @@ jobs:
         id: test
         uses: ./pkg-remove
         with:
-          anaconda_token: unset_token
+          anaconda-token: unset_token
           organization: neutronimaging
-          package_name: ibeatles
+          package-name: ibeatles
           label: dev
           keep: 0
-          dry_run: true
+          dry-run: true
 
       - name: Check number files
         shell: bash
         env:
-          NUM_REMOVED: ${{ steps.test.outputs.num_removed }}
+          NUM_REMOVED: ${{ steps.test.outputs.num-removed }}
         run: |
           echo "Number of files is ${NUM_REMOVED}"
           if [ -z "${NUM_REMOVED}" ]; then
@@ -60,17 +60,17 @@ jobs:
         id: test
         uses: ./pkg-remove
         with:
-          anaconda_token: unset_token
+          anaconda-token: unset_token
           organization: neutronimaging
-          package_name: ibeatles
+          package-name: ibeatles
           label: dev
           keep: 100
-          dry_run: true
+          dry-run: true
 
       - name: Check number files
         shell: bash
         env:
-          NUM_REMOVED: ${{ steps.test.outputs.num_removed }}
+          NUM_REMOVED: ${{ steps.test.outputs.num-removed }}
         run: |
           echo "Number of files is ${NUM_REMOVED}"
           if [ -z "${NUM_REMOVED}" ]; then

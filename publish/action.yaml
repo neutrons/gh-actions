@@ -48,11 +48,11 @@ runs:
           echo "pixi is not available. Please ensure pixi is installed and in PATH."
           exit 1
         fi
-        echo "pixi $(pixi --version) is available."
+        echo "$(pixi --version) is available."
 
     - name: Ensure anaconda token is set
       id: check_token
-      if: ${{ inputs.anaconda_token == '' }}
+      if: ${{ inputs.anaconda-token == '' }}
       shell: bash
       run: |
         echo "Anaconda.org API token is not set. Please provide a valid token."

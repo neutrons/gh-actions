@@ -40,6 +40,7 @@ runs:
     - name: Ensure anaconda token is set
       id: check_token
       if: ${{ inputs.anaconda_token == '' }}
+      shell: bash
       run: |
         echo "Anaconda.org API token is not set. Please provide a valid token."
         exit 1

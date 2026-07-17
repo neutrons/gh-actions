@@ -6,13 +6,13 @@ branding:
   color: red
 
 inputs:
-  anaconda_token:
+  anaconda-token:
     description: Anaconda.org API token
     required: true
   organization:
     description: Anaconda.org organization or user name
     required: true
-  package_name:
+  package-name:
     description: Name of the conda package to clean up
     required: true
   label:
@@ -24,22 +24,22 @@ inputs:
     description: Number of most recent package versions to keep
     required: false
     default: "5"
-  dry_run:
+  dry-run:
     description: If true, only print what would be deleted without actually deleting
     required: false
     default: "false"
 
 outputs:
-  num_removed:
+  num-removed:
     description: "Number of files that would be deleted"
-    value: ${{ steps.remove_pkg.outputs.num_removed }}
+    value: ${{ steps.remove_pkg.outputs.num-removed }}
 
 runs:
   using: "composite"
   steps:
     - name: Ensure anaconda token is set
       id: check_token
-      if: ${{ inputs.anaconda_token == '' }}
+      if: ${{ inputs.anaconda-token == '' }}
       shell: bash
       run: |
         echo "Anaconda.org API token is not set. Please provide a valid token."
@@ -89,12 +89,12 @@ runs:
       id: remove_pkg
       shell: bash
       env:
-        ANACONDA_API_TOKEN: ${{ inputs.anaconda_token }}
+        ANACONDA_API_TOKEN: ${{ inputs.anaconda-token }}
         ORGANIZATION: ${{ inputs.organization }}
-        PACKAGE_NAME: ${{ inputs.package_name }}
+        PACKAGE_NAME: ${{ inputs.package-name }}
         LABEL: ${{ inputs.label }}
         KEEP: ${{ inputs.keep }}
-        DRY_RUN: ${{ inputs.dry_run }}
+        DRY_RUN: ${{ inputs.dry-run }}
       run: |
 
         set -euo pipefail
@@ -159,6 +159,6 @@ runs:
         fi
 
         # summarize what happened and write output variables
-        echo "num_removed=${num_removed}"
-        echo "num_removed=${num_removed}" >> $GITHUB_OUTPUT
+        echo "num-removed=${num_removed}"
+        echo "num-removed=${num_removed}" >> $GITHUB_OUTPUT
         echo "::endgroup::"

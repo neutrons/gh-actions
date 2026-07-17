@@ -32,12 +32,12 @@ inputs:
     default: "shell-init"
 
 outputs:
-  conda_env:
+  conda-env:
     description: Name of the created conda environment
-    value: ${{ steps.install.outputs.conda_env }}
-  conda_install_dir:
+    value: ${{ steps.install.outputs.conda-env }}
+  conda-install-dir:
     description: Filesystem path to the created conda environment
-    value: ${{ steps.install.outputs.conda_install_dir }}
+    value: ${{ steps.install.outputs.conda-install-dir }}
 
 runs:
   using: "composite"
@@ -97,7 +97,7 @@ runs:
 
         # for use by other things
         echo "Outputs:"
-        echo "conda_install_dir=${CONDA_INSTALL_DIR}"
-        echo "conda_install_dir=${CONDA_INSTALL_DIR}" >> $GITHUB_OUTPUT
-        echo "conda_env=${CONDA_ENV_NAME}"
-        echo "conda_env=${CONDA_ENV_NAME}" >> $GITHUB_OUTPUT
+        echo "conda-install-dir=${CONDA_INSTALL_DIR}"
+        echo "conda-install-dir=${CONDA_INSTALL_DIR}" >> $GITHUB_OUTPUT
+        echo "conda-env=${CONDA_ENV_NAME}"
+        echo "conda-env=${CONDA_ENV_NAME}" >> $GITHUB_OUTPUT

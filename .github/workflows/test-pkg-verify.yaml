@@ -33,7 +33,7 @@ jobs:
         with:
           # local-channel: /tmp/local-channel
           package-name: ${{ env.PKG_NAME }}
-          conda-env-name: ${{ steps.installer.outputs.conda_env }}
+          conda-env-name: ${{ steps.installer.outputs.conda-env }}
           extra-commands: |
             echo "This is a test of a multiline"
             output=$(date)
@@ -63,4 +63,4 @@ jobs:
           # local-channel: /tmp/local-channel
           package-name: ${{ env.PKG_NAME }}
           module-name: ${{ env.PKG_NAME }}
-          conda-env-name: ${{ steps.installer.outputs.conda_env }}
+          conda-env-name: ${{ steps.installer.outputs.conda-env }}

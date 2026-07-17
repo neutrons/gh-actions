@@ -56,4 +56,4 @@ jobs:
       - name: Scan with Grype
         uses: ./grype
         with:
-          path: ${{ steps.installer.outputs.conda_install_dir }}
+          path: ${{ steps.installer.outputs.conda-install-dir }}

@@ -1,0 +1,87 @@
+name: Test pkg-install action
+
+"on":
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [next, qa, main]
+    tags: ["v*"]
+
+env:
+  PKG_NAME: finddata
+
+jobs:
+  test-local-channel:
+    name: installs package from local channel
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # neutrons has a newer version (0.14.0), so this checks the local one is used
+      - name: Put older published package in local channel
+        run: |
+          mkdir -p local-channel/noarch
+          curl -sfL -o local-channel/noarch/finddata-0.13.0-pyhbf21a9e_0.conda \
+            https://conda.anaconda.org/neutrons/noarch/finddata-0.13.0-pyhbf21a9e_0.conda
+
+      - name: Install conda package
+        id: installer
+        uses: ./pkg-install
+        with:
+          package-name: ${{ env.PKG_NAME }}
+          local-channel: ./local-channel
+          extra-channels: neutrons
+
+      - name: Check package came from local channel
+        env:
+          CONDA_ENV_NAME: ${{ steps.installer.outputs.conda-env }}
+        run: |
+          read -r version channel < <(micromamba list -n "${CONDA_ENV_NAME}" "${PKG_NAME}" \
+            | awk -v pkg="${PKG_NAME}" '$1 == pkg { print $2, $4 }')
+          echo "Installed ${PKG_NAME} ${version} from ${channel}"
+          if [ "${version}" != "0.13.0" ] || [[ "${channel}" != *local-channel* ]]; then
+            echo "::error ::Expected ${PKG_NAME} 0.13.0 from local-channel"
+            exit 1
+          fi
+
+  test-local-channel-unsatisfiable:
+    name: fails when local package can't be installed
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # 0.14.0 requires python >=3.9, while older versions on neutrons have no
+      # python bound, so without pinning to the local channel the solver would
+      # fall back to one of those
+      - name: Put package requiring python >=3.9 in local channel
+        run: |
+          mkdir -p local-channel/noarch
+          curl -sfL -o local-channel/noarch/finddata-0.14.0-pyh4616a5c_0.conda \
+            https://conda.anaconda.org/neutrons/noarch/finddata-0.14.0-pyh4616a5c_0.conda
+
+      - name: Install conda package
+        id: installer
+        continue-on-error: true
+        uses: ./pkg-install
+        with:
+          package-name: ${{ env.PKG_NAME }}
+          local-channel: ./local-channel
+          python-version: "3.8"
+          extra-channels: neutrons
+
+      - name: Check install failed
+        env:
+          OUTCOME: ${{ steps.installer.outcome }}
+        run: |
+          if [ "${OUTCOME}" != "failure" ]; then
+            echo "::error ::Expected install to fail, but outcome was '${OUTCOME}'"
+            exit 1
+          fi

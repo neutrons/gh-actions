@@ -25,6 +25,8 @@ Other actions:
 
 GitHub action to create a micromamba environment, optionally index a local conda channel, and install a conda package.
 
+When `local-channel` is set, the package is installed from that channel only (`<local-channel>::<package-name>`). If the local package can't be installed, for example because its dependencies are missing from the listed channels or conflict with `python-version`, the install step fails. Other dependencies still resolve from all listed channels.
+
 #### Usage
 
 Full list of available inputs in [`pkg-install/action.yml`](pkg-install/action.yml).

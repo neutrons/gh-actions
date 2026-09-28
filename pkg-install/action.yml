@@ -14,6 +14,7 @@ inputs:
       Local conda channel (path to directory containing .conda file)
       For example, if the .conda artifact is downloaded to `/tmp/local-channel/linux-64`,
       this should be set to `/tmp/local-channel`
+      When set, the package is installed only from this channel.
     required: false
   python-version:
     description: Python version to use when setting up micromamba
@@ -86,8 +87,15 @@ runs:
           PYTHON_VERSION="python=${PY_VERSION}"
         fi
 
+        # require the package to come from the local channel, so the solver fails
+        # instead of silently installing a published version from another channel
+        PKG_SPEC="${PKG_NAME}"
+        if [ -n "${LOCAL_CHANNEL}" ]; then
+          PKG_SPEC="${LOCAL_CHANNEL}::${PKG_NAME}"
+        fi
+
         # create environment
-        micromamba create -y -n ${CONDA_ENV_NAME} ${channels} ${PYTHON_VERSION} ${PKG_NAME}
+        micromamba create -y -n ${CONDA_ENV_NAME} ${channels} ${PYTHON_VERSION} "${PKG_SPEC}"
 
         CONDA_INSTALL_DIR=$(micromamba env list | awk -v env="${CONDA_ENV_NAME}" '$1 == env { print $NF }')
         if [ -z "${CONDA_INSTALL_DIR}" ]; then

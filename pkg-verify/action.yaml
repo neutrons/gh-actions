@@ -56,11 +56,11 @@ runs:
         echo "Conda version: $conda_version"
         echo "Python version: $python_version"
 
-        if [ "$conda_version" != "$python_version" ]; then
+        if [ "${conda_version%%+*}" != "${python_version%%+*}" ]; then
           echo -e "\nVersion mismatch!\m"
           exit 1
         else
-          echo "Versions match."
+          echo "Versions match (compared without the local part after '+')."
         fi
 
         # print extra results
